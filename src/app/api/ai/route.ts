@@ -1,22 +1,49 @@
+import { OpenRouterModel } from "@/app/llm/openrouter";
+import { openrouter } from "@openrouter/ai-sdk-provider";
+import { generateText, tool } from "ai";
 import { NextRequest, NextResponse } from "next/server";
-import { generateObject } from "ai";
-import { openrouter, OpenRouterModel } from "@/app/llm/openrouter";
 import { z } from "zod";
 
 export async function GET(requst: NextRequest) {
-  const result = await generateObject({
-    // model: openrouter(OpenRouterModel.GeminiPro25Experimental),
-    model: openrouter.chat(OpenRouterModel.GeminiPro25Experimental),
-    schema: z.object({
-      en: z.string().describe("Tradução para inglês"),
-      pt: z.string().describe("Tradução para português"),
-      fr: z.string().describe("Tradução para francês"),
-      es: z.string().describe("Tradução para espanhol"),
-    }),
-    prompt: 'Traduza "Hello World" para diferente idiomas',
-    system:
-      "Você é uma AI especializada em tradução. Sempre retorne da maneira mais sucinta possível.",
+  const result = await generateText({
+    model: openrouter(OpenRouterModel.GeminiPro25Experimental),
+    tools: {
+      profileAndUrls: tool({
+        description:
+          "This tool is used to search profile data from Github or access api URL for other user informations such as organizations, repositories, followers, following, stars, etc...",
+        parameters: z.object({
+          username: z.string().describe("Github username"),
+        }),
+        execute: async ({ username }) => {
+          const response = await fetch(
+            `https://api.github.com/users/${username}`
+          );
+          const data = await response.json();
+
+          return JSON.stringify(data);
+        },
+      }),
+
+      fetchApiUrls: tool({
+        description: "This tool is used to fetch the requested API URL",
+        parameters: z.object({
+          url: z.string().describe("API URL"),
+        }),
+        execute: async ({ url }) => {
+          const response = await fetch(url);
+          const data = await response.text();
+
+          return data;
+        },
+      }),
+    },
+    prompt: "List some repositories names from user daanmoura on Github",
+    maxSteps: 5,
+
+    onStepFinish: ({ toolResults }) => {
+      console.log({ toolResults });
+    },
   });
 
-  return NextResponse.json(result.object);
+  return NextResponse.json({ message: result.text });
 }
