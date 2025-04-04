@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
-import { openrouter, OpenRouterModel } from "@/app/llm/openrouter";
+import { openrouter, OpenRouterModel } from "@/ai/openrouter";
 import { z } from "zod";
 
 export async function GET(requst: NextRequest) {
