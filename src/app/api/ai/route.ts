@@ -1,11 +1,13 @@
 import { OpenRouterModel } from "@/app/llm/openrouter";
 import { openrouter } from "@openrouter/ai-sdk-provider";
-import { generateText, tool } from "ai";
-import { NextRequest, NextResponse } from "next/server";
+import { streamText, tool } from "ai";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 
-export async function GET(requst: NextRequest) {
-  const result = await generateText({
+export async function POST(request: NextRequest) {
+  const { messages } = await request.json();
+
+  const result = streamText({
     model: openrouter(OpenRouterModel.GeminiPro25Experimental),
     tools: {
       profileAndUrls: tool({
@@ -37,13 +39,15 @@ export async function GET(requst: NextRequest) {
         },
       }),
     },
-    prompt: "List some repositories names from user daanmoura on Github",
+    messages,
     maxSteps: 5,
-
+    system: `
+      Always answer in markdown without the quotes on the begining and end of the response.
+    `,
     onStepFinish: ({ toolResults }) => {
       console.log({ toolResults });
     },
   });
 
-  return NextResponse.json({ message: result.text });
+  return result.toDataStreamResponse();
 }
